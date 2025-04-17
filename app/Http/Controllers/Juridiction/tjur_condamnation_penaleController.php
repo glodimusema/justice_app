@@ -1,0 +1,514 @@
+<?php
+
+namespace App\Http\Controllers\Juridiction;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+use App\Models\Juridiction\{tjur_condamnation_penale};
+use App\Traits\{GlobalMethod,Slug};
+use DB;
+use Illuminate\Support\Facades\Type;
+use Carbon\Carbon;
+
+use App\User;
+use App\Message;
+
+
+class tjur_condamnation_penaleController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    use GlobalMethod;
+    use Slug;
+
+    public function index(Request $request)
+    {
+        $data = DB::table("tjur_condamnation_penale")
+        ->join('tjur_suivi_tribunal','tjur_suivi_tribunal.id','=','tjur_condamnation_penale.id_suivi_tribunal')
+        ->join('tjur_tribunal','tjur_tribunal.id','=','tjur_suivi_tribunal.id_tribunal')
+        ->join('users as user_president','user_president.id','=','tjur_tribunal.id_president')
+        ->join('tjur_arrestation','tjur_arrestation.id','=','tjur_tribunal.id_arrestation')
+        ->join('tjur_attribution_dossier','tjur_attribution_dossier.id','=','tjur_arrestation.id_attribution_jur')
+
+        ->join('tjur_dossier','tjur_dossier.id','=','tjur_attribution_dossier.id_dossier')
+
+        ->join('tvente_client','tvente_client.id','=','tjur_dossier.id_inculpe')
+        ->join('tvente_categorie_client','tvente_categorie_client.id','=','tvente_client.refCategieClient')  
+
+        ->join('tjur_categorie_dossier','tjur_categorie_dossier.id','=','tjur_dossier.id_categorie_dossier')
+
+        ->join('tvente_fournisseur','tvente_fournisseur.id','=','tjur_dossier.id_plaignant')
+        ->join('tvente_categorie_fournisseur','tvente_categorie_fournisseur.id','=','tvente_fournisseur.refCategorieFss')
+
+        ->join('tjur_affect_juridiction','tjur_affect_juridiction.id','=','tjur_attribution_dossier.id_affectation_jur')
+
+        ->join('users as user_juge','user_juge.id','=','tjur_affect_juridiction.id_user')
+          
+         ->join('villes','villes.id','=','tjur_affect_juridiction.id_ville')
+         ->join('provinces','provinces.id','=','villes.idProvince')
+         ->join('pays','pays.id','=','provinces.idPays')
+         
+         ->join('tjur_juridiction','tjur_juridiction.id','=','tjur_affect_juridiction.id_juridiction')
+         ->join('tjur_type_juridiction','tjur_type_juridiction.id','=','tjur_juridiction.id_type_jur')
+         ->join('tjur_categorie_juridiction','tjur_categorie_juridiction.id','=','tjur_juridiction.id_categorie_jur')
+
+        ->select("tjur_condamnation_penale.id",'id_suivi_tribunal','SP_duree','montant_amende','montant_SPS',
+        'CPC_duree','montant_domage','date_signification','requisition_fin','req_emprisonnement',
+        'mandat_prise_corps','commandement','montant_cmd','numero_bordereau_cmd','date_opposition',
+        'date_appel','date_revision','date_prise_partie','tjur_condamnation_penale.author',
+        'tjur_condamnation_penale.refUser','tjur_condamnation_penale.created_at',
+        //SUIVI TRIBUNAL
+        'id_tribunal','date_liberte','date_prononce',
+        //TRIBUNAL
+        'id_president','id_arrestation','accompagne1','fonction1','accompagne2','fonction2',
+        //ARRESTATION
+        'id_attribution_jur','date_arretation','motif_arrestation',
+        'statut_map','statut_odp','oc1','oc2','oc3','date_fin_oc1','date_fin_oc2','date_fin_oc3',
+        'date_relaxe','date_requete_liberte','date_liberte_provisoire','montant_liberte_prov',
+        'bordereau_liberte_prov','date_classement','motif_classement','date_envoie_fixation',
+        'statut_arrestation',        
+        //ATTRIBUTION DOSSIER
+        'id_dossier','id_affectation_jur','date_map',
+        'avocat_plaignant','avocat_inculpe','rapport_enquete','decision_statut',
+        //LE DOSSIER
+        'date_ouverture','objets_dossier','id_categorie_dossier','id_plaignant','id_inculpe',        
+        //CATEGORIE DOSSIER
+        "tjur_categorie_dossier.nom_categorie_dossier","code_categorie_dossier",
+        'tjur_categorie_dossier.duree' 
+        //PLAIGNANT 
+        ,"tvente_fournisseur.noms as noms_fss","tvente_fournisseur.contact as contact_fss",
+        "tvente_fournisseur.mail as mail_fss","tvente_fournisseur.adresse as adresse_fss",'refCategorieFss', 
+        "tvente_categorie_fournisseur.nom_categoriefss"   
+        //INCULPE
+        ,'tvente_client.noms as noms_client','tvente_client.sexe as sexe_client',
+        'tvente_client.contact as contact_client','tvente_client.mail as mail_client',
+        'tvente_client.adresse as adresse_client','pieceidentite','numeroPiece','dateLivrePiece',
+        'lieulivraisonCarte','nationnalite','datenaissance','lieunaissance','profession','occupation',
+        'nombreEnfant','dateArriverGoma','arriverPar','refCategieClient','photo','slug'
+        ,"tvente_categorie_client.designation"
+
+        //AFFECTATION JURIDICTION
+        , "tjur_affect_juridiction.id_user",
+         "tjur_affect_juridiction.id_juridiction",'tjur_affect_juridiction.id_ville',         
+         //USER juge
+         'user_juge.avatar as avatar_juge','user_juge.name as name_juge','user_juge.email as email_juge',
+         'user_juge.id_role as id_role_juge','user_juge.sexe as sexe_juge',
+         'user_juge.telephone as telephone_juge','user_juge.adresse as adresse_juge',
+         'user_juge.active as active_juge',
+          //USER PRESIDENT
+          'user_president.avatar as avatar_president','user_president.name as name_president',
+          'user_president.email as email_president','user_president.id_role as id_role_president',
+          'user_president.sexe as sexe_president','user_president.telephone as telephone_president',
+          'user_president.adresse as adresse_president','user_president.active as active_president',
+         //VILLE
+         'villes.nomVille','villes.idProvince','provinces.nomProvince','provinces.idPays','pays.nomPays'
+         //JURIDICTION
+         , "tjur_juridiction.nom_jur","tjur_juridiction.code_jur",'tjur_juridiction.id_type_jur',
+         "tjur_juridiction.id_categorie_jur"
+         
+         ,"tjur_type_juridiction.nom_type_jur", "tjur_categorie_juridiction.nom_categorie_jur");
+
+        if (!is_null($request->get('query'))) {
+            # code...
+            $query = $this->Gquery($request);
+
+            $data->where('tvente_client.noms', 'like', '%'.$query.'%')
+            ->orWhere('tvente_fournisseur.noms', 'like', '%'.$query.'%')
+            ->orWhere('tjur_juridiction.nom_jur', 'like', '%'.$query.'%')
+            ->orderBy("tjur_condamnation_penale.id", "desc");
+
+            return $this->apiData($data->paginate(10));
+           
+
+        }
+        return $this->apiData($data->paginate(10));
+    }
+
+
+    function fetch_tjur_condamnation_penale_2()
+    {
+         $data = DB::table("tjur_condamnation_penale")
+         ->join('tjur_suivi_tribunal','tjur_suivi_tribunal.id','=','tjur_condamnation_penale.id_suivi_tribunal')
+         ->join('tjur_tribunal','tjur_tribunal.id','=','tjur_suivi_tribunal.id_tribunal')
+         ->join('users as user_president','user_president.id','=','tjur_tribunal.id_president')
+         ->join('tjur_arrestation','tjur_arrestation.id','=','tjur_tribunal.id_arrestation')
+         ->join('tjur_attribution_dossier','tjur_attribution_dossier.id','=','tjur_arrestation.id_attribution_jur')
+ 
+         ->join('tjur_dossier','tjur_dossier.id','=','tjur_attribution_dossier.id_dossier')
+ 
+         ->join('tvente_client','tvente_client.id','=','tjur_dossier.id_inculpe')
+         ->join('tvente_categorie_client','tvente_categorie_client.id','=','tvente_client.refCategieClient')  
+ 
+         ->join('tjur_categorie_dossier','tjur_categorie_dossier.id','=','tjur_dossier.id_categorie_dossier')
+ 
+         ->join('tvente_fournisseur','tvente_fournisseur.id','=','tjur_dossier.id_plaignant')
+         ->join('tvente_categorie_fournisseur','tvente_categorie_fournisseur.id','=','tvente_fournisseur.refCategorieFss')
+ 
+         ->join('tjur_affect_juridiction','tjur_affect_juridiction.id','=','tjur_attribution_dossier.id_affectation_jur')
+ 
+         ->join('users as user_juge','user_juge.id','=','tjur_affect_juridiction.id_user')
+           
+          ->join('villes','villes.id','=','tjur_affect_juridiction.id_ville')
+          ->join('provinces','provinces.id','=','villes.idProvince')
+          ->join('pays','pays.id','=','provinces.idPays')
+          
+          ->join('tjur_juridiction','tjur_juridiction.id','=','tjur_affect_juridiction.id_juridiction')
+          ->join('tjur_type_juridiction','tjur_type_juridiction.id','=','tjur_juridiction.id_type_jur')
+          ->join('tjur_categorie_juridiction','tjur_categorie_juridiction.id','=','tjur_juridiction.id_categorie_jur')
+ 
+         ->select("tjur_condamnation_penale.id",'id_suivi_tribunal','SP_duree','montant_amende','montant_SPS',
+         'CPC_duree','montant_domage','date_signification','requisition_fin','req_emprisonnement',
+         'mandat_prise_corps','commandement','montant_cmd','numero_bordereau_cmd','date_opposition',
+         'date_appel','date_revision','date_prise_partie','tjur_condamnation_penale.author',
+         'tjur_condamnation_penale.refUser','tjur_condamnation_penale.created_at',
+         //SUIVI TRIBUNAL
+         'id_tribunal','date_liberte','date_prononce',
+         //TRIBUNAL
+         'id_president','id_arrestation','accompagne1','fonction1','accompagne2','fonction2',
+         //ARRESTATION
+         'id_attribution_jur','date_arretation','motif_arrestation',
+         'statut_map','statut_odp','oc1','oc2','oc3','date_fin_oc1','date_fin_oc2','date_fin_oc3',
+         'date_relaxe','date_requete_liberte','date_liberte_provisoire','montant_liberte_prov',
+         'bordereau_liberte_prov','date_classement','motif_classement','date_envoie_fixation',
+         'statut_arrestation',        
+         //ATTRIBUTION DOSSIER
+         'id_dossier','id_affectation_jur','date_map',
+         'avocat_plaignant','avocat_inculpe','rapport_enquete','decision_statut',
+         //LE DOSSIER
+         'date_ouverture','objets_dossier','id_categorie_dossier','id_plaignant','id_inculpe',        
+         //CATEGORIE DOSSIER
+         "tjur_categorie_dossier.nom_categorie_dossier","code_categorie_dossier",
+         'tjur_categorie_dossier.duree' 
+         //PLAIGNANT 
+         ,"tvente_fournisseur.noms as noms_fss","tvente_fournisseur.contact as contact_fss",
+         "tvente_fournisseur.mail as mail_fss","tvente_fournisseur.adresse as adresse_fss",'refCategorieFss', 
+         "tvente_categorie_fournisseur.nom_categoriefss"   
+         //INCULPE
+         ,'tvente_client.noms as noms_client','tvente_client.sexe as sexe_client',
+         'tvente_client.contact as contact_client','tvente_client.mail as mail_client',
+         'tvente_client.adresse as adresse_client','pieceidentite','numeroPiece','dateLivrePiece',
+         'lieulivraisonCarte','nationnalite','datenaissance','lieunaissance','profession','occupation',
+         'nombreEnfant','dateArriverGoma','arriverPar','refCategieClient','photo','slug'
+         ,"tvente_categorie_client.designation"
+ 
+         //AFFECTATION JURIDICTION
+         , "tjur_affect_juridiction.id_user",
+          "tjur_affect_juridiction.id_juridiction",'tjur_affect_juridiction.id_ville',         
+          //USER juge
+          'user_juge.avatar as avatar_juge','user_juge.name as name_juge','user_juge.email as email_juge',
+          'user_juge.id_role as id_role_juge','user_juge.sexe as sexe_juge',
+          'user_juge.telephone as telephone_juge','user_juge.adresse as adresse_juge',
+          'user_juge.active as active_juge',
+           //USER PRESIDENT
+           'user_president.avatar as avatar_president','user_president.name as name_president',
+           'user_president.email as email_president','user_president.id_role as id_role_president',
+           'user_president.sexe as sexe_president','user_president.telephone as telephone_president',
+           'user_president.adresse as adresse_president','user_president.active as active_president',
+          //VILLE
+          'villes.nomVille','villes.idProvince','provinces.nomProvince','provinces.idPays','pays.nomPays'
+          //JURIDICTION
+          , "tjur_juridiction.nom_jur","tjur_juridiction.code_jur",'tjur_juridiction.id_type_jur',
+          "tjur_juridiction.id_categorie_jur"
+          
+          ,"tjur_type_juridiction.nom_type_jur", "tjur_categorie_juridiction.nom_categorie_jur")
+          ->get();
+        
+        return response()->json(['data' => $data]);
+
+    }
+
+
+    public function fetch_data_entete(Request $request,$refEntete)
+    {
+        $data = DB::table("tjur_condamnation_penale")
+        ->join('tjur_suivi_tribunal','tjur_suivi_tribunal.id','=','tjur_condamnation_penale.id_suivi_tribunal')
+        ->join('tjur_tribunal','tjur_tribunal.id','=','tjur_suivi_tribunal.id_tribunal')
+        ->join('users as user_president','user_president.id','=','tjur_tribunal.id_president')
+        ->join('tjur_arrestation','tjur_arrestation.id','=','tjur_tribunal.id_arrestation')
+        ->join('tjur_attribution_dossier','tjur_attribution_dossier.id','=','tjur_arrestation.id_attribution_jur')
+
+        ->join('tjur_dossier','tjur_dossier.id','=','tjur_attribution_dossier.id_dossier')
+
+        ->join('tvente_client','tvente_client.id','=','tjur_dossier.id_inculpe')
+        ->join('tvente_categorie_client','tvente_categorie_client.id','=','tvente_client.refCategieClient')  
+
+        ->join('tjur_categorie_dossier','tjur_categorie_dossier.id','=','tjur_dossier.id_categorie_dossier')
+
+        ->join('tvente_fournisseur','tvente_fournisseur.id','=','tjur_dossier.id_plaignant')
+        ->join('tvente_categorie_fournisseur','tvente_categorie_fournisseur.id','=','tvente_fournisseur.refCategorieFss')
+
+        ->join('tjur_affect_juridiction','tjur_affect_juridiction.id','=','tjur_attribution_dossier.id_affectation_jur')
+
+        ->join('users as user_juge','user_juge.id','=','tjur_affect_juridiction.id_user')
+          
+         ->join('villes','villes.id','=','tjur_affect_juridiction.id_ville')
+         ->join('provinces','provinces.id','=','villes.idProvince')
+         ->join('pays','pays.id','=','provinces.idPays')
+         
+         ->join('tjur_juridiction','tjur_juridiction.id','=','tjur_affect_juridiction.id_juridiction')
+         ->join('tjur_type_juridiction','tjur_type_juridiction.id','=','tjur_juridiction.id_type_jur')
+         ->join('tjur_categorie_juridiction','tjur_categorie_juridiction.id','=','tjur_juridiction.id_categorie_jur')
+
+        ->select("tjur_condamnation_penale.id",'id_suivi_tribunal','SP_duree','montant_amende','montant_SPS',
+        'CPC_duree','montant_domage','date_signification','requisition_fin','req_emprisonnement',
+        'mandat_prise_corps','commandement','montant_cmd','numero_bordereau_cmd','date_opposition',
+        'date_appel','date_revision','date_prise_partie','tjur_condamnation_penale.author',
+        'tjur_condamnation_penale.refUser','tjur_condamnation_penale.created_at',
+        //SUIVI TRIBUNAL
+        'id_tribunal','date_liberte','date_prononce',
+        //TRIBUNAL
+        'id_president','id_arrestation','accompagne1','fonction1','accompagne2','fonction2',
+        //ARRESTATION
+        'id_attribution_jur','date_arretation','motif_arrestation',
+        'statut_map','statut_odp','oc1','oc2','oc3','date_fin_oc1','date_fin_oc2','date_fin_oc3',
+        'date_relaxe','date_requete_liberte','date_liberte_provisoire','montant_liberte_prov',
+        'bordereau_liberte_prov','date_classement','motif_classement','date_envoie_fixation',
+        'statut_arrestation',        
+        //ATTRIBUTION DOSSIER
+        'id_dossier','id_affectation_jur','date_map',
+        'avocat_plaignant','avocat_inculpe','rapport_enquete','decision_statut',
+        //LE DOSSIER
+        'date_ouverture','objets_dossier','id_categorie_dossier','id_plaignant','id_inculpe',        
+        //CATEGORIE DOSSIER
+        "tjur_categorie_dossier.nom_categorie_dossier","code_categorie_dossier",
+        'tjur_categorie_dossier.duree' 
+        //PLAIGNANT 
+        ,"tvente_fournisseur.noms as noms_fss","tvente_fournisseur.contact as contact_fss",
+        "tvente_fournisseur.mail as mail_fss","tvente_fournisseur.adresse as adresse_fss",'refCategorieFss', 
+        "tvente_categorie_fournisseur.nom_categoriefss"   
+        //INCULPE
+        ,'tvente_client.noms as noms_client','tvente_client.sexe as sexe_client',
+        'tvente_client.contact as contact_client','tvente_client.mail as mail_client',
+        'tvente_client.adresse as adresse_client','pieceidentite','numeroPiece','dateLivrePiece',
+        'lieulivraisonCarte','nationnalite','datenaissance','lieunaissance','profession','occupation',
+        'nombreEnfant','dateArriverGoma','arriverPar','refCategieClient','photo','slug'
+        ,"tvente_categorie_client.designation"
+
+        //AFFECTATION JURIDICTION
+        , "tjur_affect_juridiction.id_user",
+         "tjur_affect_juridiction.id_juridiction",'tjur_affect_juridiction.id_ville',         
+         //USER juge
+         'user_juge.avatar as avatar_juge','user_juge.name as name_juge','user_juge.email as email_juge',
+         'user_juge.id_role as id_role_juge','user_juge.sexe as sexe_juge',
+         'user_juge.telephone as telephone_juge','user_juge.adresse as adresse_juge',
+         'user_juge.active as active_juge',
+          //USER PRESIDENT
+          'user_president.avatar as avatar_president','user_president.name as name_president',
+          'user_president.email as email_president','user_president.id_role as id_role_president',
+          'user_president.sexe as sexe_president','user_president.telephone as telephone_president',
+          'user_president.adresse as adresse_president','user_president.active as active_president',
+         //VILLE
+         'villes.nomVille','villes.idProvince','provinces.nomProvince','provinces.idPays','pays.nomPays'
+         //JURIDICTION
+         , "tjur_juridiction.nom_jur","tjur_juridiction.code_jur",'tjur_juridiction.id_type_jur',
+         "tjur_juridiction.id_categorie_jur"
+         
+         ,"tjur_type_juridiction.nom_type_jur", "tjur_categorie_juridiction.nom_categorie_jur")
+        ->Where('tjur_condamnation_penale.id_suivi_tribunal',$refEntete);
+        if (!is_null($request->get('query'))) {
+            # code...
+            $query = $this->Gquery($request);
+
+            $data->where('tvente_client.noms', 'like', '%'.$query.'%')
+            ->orWhere('tvente_fournisseur.noms', 'like', '%'.$query.'%')
+            ->orWhere('tjur_juridiction.nom_jur', 'like', '%'.$query.'%')     
+            ->orderBy("tjur_condamnation_penale.created_at", "desc");
+            return $this->apiData($data->paginate(10));         
+
+        }       
+        $data->orderBy("tjur_condamnation_penale.created_at", "desc");
+        return $this->apiData($data->paginate(10));
+    }
+
+    
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+
+    public function store(Request $request)
+    {
+        if ($request->id !='') 
+        {           
+            # code...
+            // update 
+            $data = tjur_condamnation_penale::where("id", $request->id)->update([
+                'id_suivi_tribunal'=> $request->id_suivi_tribunal,
+                'SP_duree'=> $request->SP_duree,
+                'montant_amende'=> $request->montant_amende,
+                'montant_SPS'=> $request->montant_SPS,
+                'CPC_duree'=> $request->CPC_duree,
+                'montant_domage'=> $request->montant_domage,
+                'date_signification'=> $request->date_signification,
+                'requisition_fin'=> $request->requisition_fin,
+                'req_emprisonnement'=> $request->req_emprisonnement,
+                'mandat_prise_corps'=> $request->mandat_prise_corps,
+                'commandement'=> $request->commandement,
+                'montant_cmd'=> $request->montant_cmd,
+                'numero_bordereau_cmd'=> $request->numero_bordereau_cmd,
+                'date_opposition'=> $request->date_opposition,
+                'date_appel'=> $request->date_appel,
+                'date_revision'=> $request->date_revision,
+                'date_prise_partie'=> $request->date_prise_partie,
+                'author'=>  $request->author,
+                'refUser' =>  $request->refUser
+            ]);
+            return $this->msgJson('Modification avec succès!!!');
+
+        }
+        else
+        {
+            // insertion 
+            $data = tjur_condamnation_penale::create([
+                'id_suivi_tribunal'=> $request->id_suivi_tribunal,
+                'SP_duree'=> $request->SP_duree,
+                'montant_amende'=> $request->montant_amende,
+                'montant_SPS'=> $request->montant_SPS,
+                'CPC_duree'=> $request->CPC_duree,
+                'montant_domage'=> $request->montant_domage,
+                'date_signification'=> $request->date_signification,
+                'requisition_fin'=> $request->requisition_fin,
+                'req_emprisonnement'=> $request->req_emprisonnement,
+                'mandat_prise_corps'=> $request->mandat_prise_corps,
+                'commandement'=> $request->commandement,
+                'montant_cmd'=> $request->montant_cmd,
+                'numero_bordereau_cmd'=> $request->numero_bordereau_cmd,
+                'date_opposition'=> $request->date_opposition,
+                'date_appel'=> $request->date_appel,
+                'date_revision'=> $request->date_revision,
+                'date_prise_partie'=> $request->date_prise_partie,
+                'author'=>  $request->author,
+                'refUser' =>  $request->refUser
+            ]);
+
+            return $this->msgJson('Insertion avec succès!!!');
+        }
+    }
+
+    
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+        $data = DB::table("tjur_condamnation_penale")
+        ->join('tjur_suivi_tribunal','tjur_suivi_tribunal.id','=','tjur_condamnation_penale.id_suivi_tribunal')
+        ->join('tjur_tribunal','tjur_tribunal.id','=','tjur_suivi_tribunal.id_tribunal')
+        ->join('users as user_president','user_president.id','=','tjur_tribunal.id_president')
+        ->join('tjur_arrestation','tjur_arrestation.id','=','tjur_tribunal.id_arrestation')
+        ->join('tjur_attribution_dossier','tjur_attribution_dossier.id','=','tjur_arrestation.id_attribution_jur')
+
+        ->join('tjur_dossier','tjur_dossier.id','=','tjur_attribution_dossier.id_dossier')
+
+        ->join('tvente_client','tvente_client.id','=','tjur_dossier.id_inculpe')
+        ->join('tvente_categorie_client','tvente_categorie_client.id','=','tvente_client.refCategieClient')  
+
+        ->join('tjur_categorie_dossier','tjur_categorie_dossier.id','=','tjur_dossier.id_categorie_dossier')
+
+        ->join('tvente_fournisseur','tvente_fournisseur.id','=','tjur_dossier.id_plaignant')
+        ->join('tvente_categorie_fournisseur','tvente_categorie_fournisseur.id','=','tvente_fournisseur.refCategorieFss')
+
+        ->join('tjur_affect_juridiction','tjur_affect_juridiction.id','=','tjur_attribution_dossier.id_affectation_jur')
+
+        ->join('users as user_juge','user_juge.id','=','tjur_affect_juridiction.id_user')
+          
+         ->join('villes','villes.id','=','tjur_affect_juridiction.id_ville')
+         ->join('provinces','provinces.id','=','villes.idProvince')
+         ->join('pays','pays.id','=','provinces.idPays')
+         
+         ->join('tjur_juridiction','tjur_juridiction.id','=','tjur_affect_juridiction.id_juridiction')
+         ->join('tjur_type_juridiction','tjur_type_juridiction.id','=','tjur_juridiction.id_type_jur')
+         ->join('tjur_categorie_juridiction','tjur_categorie_juridiction.id','=','tjur_juridiction.id_categorie_jur')
+
+        ->select("tjur_condamnation_penale.id",'id_suivi_tribunal','SP_duree','montant_amende','montant_SPS',
+        'CPC_duree','montant_domage','date_signification','requisition_fin','req_emprisonnement',
+        'mandat_prise_corps','commandement','montant_cmd','numero_bordereau_cmd','date_opposition',
+        'date_appel','date_revision','date_prise_partie','tjur_condamnation_penale.author',
+        'tjur_condamnation_penale.refUser','tjur_condamnation_penale.created_at',
+        //SUIVI TRIBUNAL
+        'id_tribunal','date_liberte','date_prononce',
+        //TRIBUNAL
+        'id_president','id_arrestation','accompagne1','fonction1','accompagne2','fonction2',
+        //ARRESTATION
+        'id_attribution_jur','date_arretation','motif_arrestation',
+        'statut_map','statut_odp','oc1','oc2','oc3','date_fin_oc1','date_fin_oc2','date_fin_oc3',
+        'date_relaxe','date_requete_liberte','date_liberte_provisoire','montant_liberte_prov',
+        'bordereau_liberte_prov','date_classement','motif_classement','date_envoie_fixation',
+        'statut_arrestation',        
+        //ATTRIBUTION DOSSIER
+        'id_dossier','id_affectation_jur','date_map',
+        'avocat_plaignant','avocat_inculpe','rapport_enquete','decision_statut',
+        //LE DOSSIER
+        'date_ouverture','objets_dossier','id_categorie_dossier','id_plaignant','id_inculpe',        
+        //CATEGORIE DOSSIER
+        "tjur_categorie_dossier.nom_categorie_dossier","code_categorie_dossier",
+        'tjur_categorie_dossier.duree' 
+        //PLAIGNANT 
+        ,"tvente_fournisseur.noms as noms_fss","tvente_fournisseur.contact as contact_fss",
+        "tvente_fournisseur.mail as mail_fss","tvente_fournisseur.adresse as adresse_fss",'refCategorieFss', 
+        "tvente_categorie_fournisseur.nom_categoriefss"   
+        //INCULPE
+        ,'tvente_client.noms as noms_client','tvente_client.sexe as sexe_client',
+        'tvente_client.contact as contact_client','tvente_client.mail as mail_client',
+        'tvente_client.adresse as adresse_client','pieceidentite','numeroPiece','dateLivrePiece',
+        'lieulivraisonCarte','nationnalite','datenaissance','lieunaissance','profession','occupation',
+        'nombreEnfant','dateArriverGoma','arriverPar','refCategieClient','photo','slug'
+        ,"tvente_categorie_client.designation"
+
+        //AFFECTATION JURIDICTION
+        , "tjur_affect_juridiction.id_user",
+         "tjur_affect_juridiction.id_juridiction",'tjur_affect_juridiction.id_ville',         
+         //USER juge
+         'user_juge.avatar as avatar_juge','user_juge.name as name_juge','user_juge.email as email_juge',
+         'user_juge.id_role as id_role_juge','user_juge.sexe as sexe_juge',
+         'user_juge.telephone as telephone_juge','user_juge.adresse as adresse_juge',
+         'user_juge.active as active_juge',
+          //USER PRESIDENT
+          'user_president.avatar as avatar_president','user_president.name as name_president',
+          'user_president.email as email_president','user_president.id_role as id_role_president',
+          'user_president.sexe as sexe_president','user_president.telephone as telephone_president',
+          'user_president.adresse as adresse_president','user_president.active as active_president',
+         //VILLE
+         'villes.nomVille','villes.idProvince','provinces.nomProvince','provinces.idPays','pays.nomPays'
+         //JURIDICTION
+         , "tjur_juridiction.nom_jur","tjur_juridiction.code_jur",'tjur_juridiction.id_type_jur',
+         "tjur_juridiction.id_categorie_jur"
+         
+         ,"tjur_type_juridiction.nom_type_jur", "tjur_categorie_juridiction.nom_categorie_jur")
+         ->where('tjur_condamnation_penale.id', $id)
+         ->get();
+        return response()->json(['data' => $data]);
+    }
+
+   
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        $data = tjur_condamnation_penale::where('id', $id)->delete();
+        return $this->msgJson('Suppression avec succès!!!');
+    }
+
+    public function destroyMessage($id)
+    {
+        //
+        $data = Message::where('id', $id)->delete();
+        return $this->msgJson('Suppression avec succès!!!');
+    }
+}

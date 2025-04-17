@@ -1,0 +1,157 @@
+<?php
+
+namespace App\Http\Controllers\Juridiction;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+use App\Models\Juridiction\{tjur_juridiction};
+use App\Traits\{GlobalMethod,Slug};
+use DB;
+
+use App\User;
+use App\Message;
+
+
+
+
+class tjur_juridictionController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    use GlobalMethod;
+    use Slug;
+
+
+    public function index(Request $request)
+    {
+        $data = DB::table("tjur_juridiction")
+        ->join('tjur_type_juridiction','tjur_type_juridiction.id','=','tjur_juridiction.id_type_jur')
+        ->join('tjur_categorie_juridiction','tjur_categorie_juridiction.id','=','tjur_juridiction.id_categorie_jur')
+        
+        ->select("tjur_juridiction.id", "tjur_juridiction.nom_jur","tjur_juridiction.code_jur",
+        'tjur_juridiction.id_type_jur',"tjur_juridiction.id_categorie_jur","tjur_juridiction.created_at"
+        
+        ,"tjur_type_juridiction.nom_type_jur", "tjur_categorie_juridiction.nom_categorie_jur");
+
+        if (!is_null($request->get('query'))) {
+            # code...
+            $query = $this->Gquery($request);
+
+            $data->where('tjur_juridiction.nom_jur', 'like', '%'.$query.'%')
+            ->orWhere('nom_categorie_jur', 'like', '%'.$query.'%')
+            ->orderBy("tjur_juridiction.id", "desc");
+
+            return $this->apiData($data->paginate(10));
+           
+
+        }
+        return $this->apiData($data->paginate(10));
+    }
+
+
+    function fetch_tjur_juridiction_2()
+    {
+         $data = DB::table("tjur_juridiction")
+         ->join('tjur_type_juridiction','tjur_type_juridiction.id','=','tjur_juridiction.id_type_jur')
+         ->join('tjur_categorie_juridiction','tjur_categorie_juridiction.id','=','tjur_juridiction.id_categorie_jur')
+         
+         ->select("tjur_juridiction.id", "tjur_juridiction.nom_jur","tjur_juridiction.code_jur",
+         'tjur_juridiction.id_type_jur',"tjur_juridiction.id_categorie_jur","tjur_juridiction.created_at"
+         
+         ,"tjur_type_juridiction.nom_type_jur", "tjur_categorie_juridiction.nom_categorie_jur")
+        ->get();
+        
+        return response()->json(['data' => $data]);
+
+    }
+
+    
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+
+     // tjur_juridiction
+// id_user
+// active
+
+    public function store(Request $request)
+    {
+        //
+        if ($request->id !='') 
+        {
+            # code...
+            // update 
+            $data = tjur_juridiction::where("id", $request->id)->update([
+                'nom_jur' =>  $request->nom_jur,
+                'code_jur' =>  $request->code_jur,
+                'id_type_jur' =>  $request->id_type_jur,
+                'id_categorie_jur' =>  $request->id_categorie_jur
+            ]);
+            return $this->msgJson('Modification avec succès!!!');
+
+        }
+        else
+        {
+            // insertion 
+            $data = tjur_juridiction::create([
+                'nom_jur' =>  $request->nom_jur,
+                'code_jur' =>  $request->code_jur,
+                'id_type_jur' =>  $request->id_type_jur,
+                'id_categorie_jur' =>  $request->id_categorie_jur
+            ]);
+
+            return $this->msgJson('Insertion avec succès!!!');
+        }
+    }
+
+    
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        //
+        $data = DB::table("tjur_juridiction")
+        ->join('tjur_type_juridiction','tjur_type_juridiction.id','=','tjur_juridiction.id_type_jur')
+        ->join('tjur_categorie_juridiction','tjur_categorie_juridiction.id','=','tjur_juridiction.id_categorie_jur')
+        
+        ->select("tjur_juridiction.id", "tjur_juridiction.nom_jur","tjur_juridiction.code_jur",
+        'tjur_juridiction.id_type_jur',"tjur_juridiction.id_categorie_jur","tjur_juridiction.created_at"
+        
+        ,"tjur_type_juridiction.nom_type_jur", "tjur_categorie_juridiction.nom_categorie_jur")
+        ->where('tjur_juridiction.id', $id)->get();
+        return response()->json(['data' => $data]);
+    }
+
+   
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        $data = tjur_juridiction::where('id', $id)->delete();
+        return $this->msgJson('Suppression avec succès!!!');
+    }
+
+    public function destroyMessage($id)
+    {
+        //
+        $data = Message::where('id', $id)->delete();
+        return $this->msgJson('Suppression avec succès!!!');
+    }
+}
