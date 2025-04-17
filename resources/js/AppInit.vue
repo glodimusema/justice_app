@@ -469,7 +469,7 @@ export default {
           ],
           listDossier: [
             {
-              text: "Dossier",
+              text: "Parquet",
               icon: "mdi-post",
               items: [              
                 {

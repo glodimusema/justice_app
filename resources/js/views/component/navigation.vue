@@ -20,7 +20,7 @@
       </v-avatar>
       <strong>
         <!-- <h5>{{ userData.name }}</h5> -->
-        <h5>HOTEL</h5>
+        <h5>JURIDICTION</h5>
       </strong>
 
       <!-- <h6 class="grey--text ">{{ userData.email }}</h6> -->

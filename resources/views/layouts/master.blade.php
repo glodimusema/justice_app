@@ -6,7 +6,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="x-ua-compatible" content="ie=edge" />
-  <title>COOPERATIVE</title>
+  <title>JURIDICTION</title>
   {{-- <title>HOTEL</title> --}}
   <meta name="description" content="" />
 
